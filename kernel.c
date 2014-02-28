@@ -1137,7 +1137,6 @@ int main()
 		tasks[current_task].status = TASK_READY;
 		timeup = 0;
 
-			printf("current = %d,r7 = %d\n",current_task,tasks[current_task].stack->r7);
 
 		switch (tasks[current_task].stack->r7) {
 		case 0x1: /* fork */
