@@ -430,6 +430,50 @@ void serial_readwrite_task()
 		write(fdout, str, curr_char+1 + 1);
 	}
 }
+void check_keyword()
+{
+        char *argv[MAX_ARGC + 1] = {NULL};
+        char cmdstr[CMDBUF_SIZE];
+        char buffer[CMDBUF_SIZE * MAX_ENVVALUE / 2 + 1];
+        char *p = buffer;
+        int argc = 1;
+        int i;
+
+        find_events();
+        strcpy(cmdstr, cmd[cur_his]);
+        argv[0] = cmdtok(cmdstr);
+        if (!argv[0])
+                return;
+
+        while (1) {
+                argv[argc] = cmdtok(NULL);
+                if (!argv[argc])
+                        break;
+                argc++;
+                if (argc >= MAX_ARGC)
+                        break;
+        }
+
+        for(i = 0; i < argc; i++) {
+                int l = fill_arg(p, argv[i]);
+                argv[i] = p;
+                p += l + 1;
+        }
+
+        for (i = 0; i < CMD_COUNT; i++) {
+                if (!strcmp(argv[0], cmd_data[i].cmd)) {
+                        cmd_data[i].func(argc, argv);
+                        break;
+                }
+        }
+        if (i == CMD_COUNT) {
+                write(fdout, argv[0], strlen(argv[0]) + 1);
+                write(fdout, ": command not found", 20);
+                write(fdout, next_line, 3);
+        }
+}
+
+                                                           
 
 void serial_test_task()
 {
@@ -496,49 +540,6 @@ char *cmdtok(char *cmd)
 	for (; *cur == '\0'; cur++)
 		if (cur == end) return NULL;
 	return cur;
-}
-
-void check_keyword()
-{
-	char *argv[MAX_ARGC + 1] = {NULL};
-	char cmdstr[CMDBUF_SIZE];
-	char buffer[CMDBUF_SIZE * MAX_ENVVALUE / 2 + 1];
-	char *p = buffer;
-	int argc = 1;
-	int i;
-
-	find_events();
-	strcpy(cmdstr, cmd[cur_his]);
-	argv[0] = cmdtok(cmdstr);
-	if (!argv[0])
-		return;
-
-	while (1) {
-		argv[argc] = cmdtok(NULL);
-		if (!argv[argc])
-			break;
-		argc++;
-		if (argc >= MAX_ARGC)
-			break;
-	}
-
-	for(i = 0; i < argc; i++) {
-		int l = fill_arg(p, argv[i]);
-		argv[i] = p;
-		p += l + 1;
-	}
-
-	for (i = 0; i < CMD_COUNT; i++) {
-		if (!strcmp(argv[0], cmd_data[i].cmd)) {
-			cmd_data[i].func(argc, argv);
-			break;
-		}
-	}
-	if (i == CMD_COUNT) {
-		write(fdout, argv[0], strlen(argv[0]) + 1);
-		write(fdout, ": command not found", 20);
-		write(fdout, next_line, 3);
-	}
 }
 
 void find_events()
