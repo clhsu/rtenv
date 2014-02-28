@@ -430,6 +430,62 @@ void serial_readwrite_task()
 		write(fdout, str, curr_char+1 + 1);
 	}
 }
+
+/* Split command into tokens. */
+char *cmdtok(char *cmd)
+{
+        static char *cur = NULL;
+        static char *end = NULL;
+        if (cmd) {
+                char quo = '\0';
+                cur = cmd;
+                for (end = cmd; *end; end++) {
+                        if (*end == '\'' || *end == '\"') {
+                                if (quo == *end)
+                                        quo = '\0';
+                                else if (quo == '\0')
+                                        quo = *end;
+                                *end = '\0';
+                        }
+                        else if (isspace(*end) && !quo)
+                                *end = '\0';
+                }
+        }
+        else
+                for (; *cur; cur++)
+                        ;
+
+        for (; *cur == '\0'; cur++)
+                if (cur == end) return NULL;
+        return cur;
+}
+
+void find_events()
+{
+	char buf[CMDBUF_SIZE];
+	char *p = cmd[cur_his];
+	char *q;
+	int i;
+
+	for (; *p; p++) {
+		if (*p == '!') {
+			q = p;
+			while (*q && !isspace(*q))
+				q++;
+			for (i = cur_his + HISTORY_COUNT - 1; i > cur_his; i--) {
+				if (!strncmp(cmd[i % HISTORY_COUNT], p + 1, q - p - 1)) {
+					strcpy(buf, q);
+					strcpy(p, cmd[i % HISTORY_COUNT]);
+					p += strlen(p);
+					strcpy(p--, buf);
+					break;
+				}
+			}
+		}
+	}
+}
+
+
 void check_keyword()
 {
         char *argv[MAX_ARGC + 1] = {NULL};
@@ -513,60 +569,6 @@ void serial_test_task()
 	}
 }
 
-/* Split command into tokens. */
-char *cmdtok(char *cmd)
-{
-	static char *cur = NULL;
-	static char *end = NULL;
-	if (cmd) {
-		char quo = '\0';
-		cur = cmd;
-		for (end = cmd; *end; end++) {
-			if (*end == '\'' || *end == '\"') {
-				if (quo == *end)
-					quo = '\0';
-				else if (quo == '\0')
-					quo = *end;
-				*end = '\0';
-			}
-			else if (isspace(*end) && !quo)
-				*end = '\0';
-		}
-	}
-	else
-		for (; *cur; cur++)
-			;
-
-	for (; *cur == '\0'; cur++)
-		if (cur == end) return NULL;
-	return cur;
-}
-
-void find_events()
-{
-	char buf[CMDBUF_SIZE];
-	char *p = cmd[cur_his];
-	char *q;
-	int i;
-
-	for (; *p; p++) {
-		if (*p == '!') {
-			q = p;
-			while (*q && !isspace(*q))
-				q++;
-			for (i = cur_his + HISTORY_COUNT - 1; i > cur_his; i--) {
-				if (!strncmp(cmd[i % HISTORY_COUNT], p + 1, q - p - 1)) {
-					strcpy(buf, q);
-					strcpy(p, cmd[i % HISTORY_COUNT]);
-					p += strlen(p);
-					strcpy(p--, buf);
-					break;
-				}
-			}
-		}
-	}
-}
-
 char *find_envvar(const char *name)
 {
 	int i;
@@ -646,6 +648,28 @@ void export_envvar(int argc, char *argv[])
 	}
 }
 
+//this function helps to show int
+
+void itoa(int n, char *dst, int base)
+{
+	char buf[33] = {0};
+	char *p = &buf[32];
+
+	if (n == 0)
+		*--p = '0';
+	else {
+		char *q;
+		unsigned int num = (base == 10 && num < 0) ? -n : n;
+
+		for (; num; num/=base)
+			*--p = "0123456789ABCDEF" [num % base];
+		if (base == 10 && n < 0)
+			*--p = '-';
+	}
+
+	strcpy(dst, p);
+}
+
 //ps
 void show_task_info(int argc, char* argv[])
 {
@@ -679,27 +703,7 @@ void show_task_info(int argc, char* argv[])
 	}
 }
 
-//this function helps to show int
 
-void itoa(int n, char *dst, int base)
-{
-	char buf[33] = {0};
-	char *p = &buf[32];
-
-	if (n == 0)
-		*--p = '0';
-	else {
-		char *q;
-		unsigned int num = (base == 10 && num < 0) ? -n : n;
-
-		for (; num; num/=base)
-			*--p = "0123456789ABCDEF" [num % base];
-		if (base == 10 && n < 0)
-			*--p = '-';
-	}
-
-	strcpy(dst, p);
-}
 
 //help
 
